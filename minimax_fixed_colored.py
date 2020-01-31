@@ -5,7 +5,7 @@ import colored
 def printBoard(board,width):
     print("\t",end="")
     for i in range(size):
-        print(str(i+1),end=" "*width)
+        print(str(i+1),end=" "*(width-(len(str(i+1))-1)))
     print("\n")#換兩行==print()print()
     for rowNum in range(size):
         print(str(rowNum+1),end="\t")
@@ -558,6 +558,8 @@ while 1:
     
     #訂定AI搜尋深度
     CheckDepth=int(-0.05 * boardSpaceAmount +7)#or+6
+    if CheckDepth<1:
+    	CheckDepth=1
     print(f"CheckDepth : {CheckDepth}")
     #AI下棋
     print("loading...")

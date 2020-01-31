@@ -1,30 +1,56 @@
 import time
 import sys
 import colored
-#印出棋盤
-def printBoard(board,width):
+import keyboard
+
+#印出棋盤，包括要特別標記的格子(以其橫排數chosenROWNUM和其直排數chosenPIECENUM表示)
+def printBoard(board,width,chosenROWNUM=-1,chosenPIECENUM=-1):#若不須標記格子，則原本要特別標記的格子之座標預設為(-1,-1)，程式就不會找到對應的格子特別標示了
     print("\t",end="")
     for i in range(size):
-        print(str(i+1),end=" "*width)
+        print(" "+str(i+1)+" ",end=" "*(width-(len(str(i+1))-1)))#印出直排行數
     print("\n")#換兩行==print()print()
+    #跑遍各排的各顆棋子
     for rowNum in range(size):
-        print(str(rowNum+1),end="\t")
+        print(str(rowNum+1),end="\t")#印出橫排行數
         for pieceNum in range(size):
             piece=board[rowNum][pieceNum]
+            #針對玩家棋子、AI棋子、或空格，印出不同的前景色
             if piece=="O":
                 THISfcolor=colored.fg("green")
             elif piece=="X":
                 THISfcolor=colored.fg("red_1")
             elif piece==".":
                 THISfcolor=fcolor
-            print(THISfcolor+bcolor+piece+reset,end="")
-            if not pieceNum==size-1: #不是最後一個旗子
+            #若該格是要特別標記的格子，則改變其背景色
+            if rowNum==chosenROWNUM and pieceNum==chosenPIECENUM:
+                THISbcolor=markedcolor
+            else:
+                THISbcolor=bcolor
+            print(THISfcolor+THISbcolor+" "+piece+" "+reset,end="")#印出一格棋子
+            if not pieceNum==size-1: #不是最後一個棋子就再加上空白
                 print(fcolor+bcolor+" " * width+reset,end="")
         print()
 
-        #print(fcolor+bcolor+(" "*width).join(board[rowNum])+reset)
-
-        print("\t"+fcolor+bcolor+" "*(width*(size-1)+size)+reset)
+        if not rowNum==size-1: #不是最後一排就再加上一行空白!
+            print("\t"+fcolor+bcolor+" "*(width*(size-1)+size*(1+2))+reset)
+#設定難度，即AI的搜尋深度
+#0:搜尋深度淺，花費時間少;1:搜尋深度深，花費時間多
+def setDifficulty():
+    print("plz choose the difficulty.(0:AI's stupid while spending shorter time\t/\t1:AI's smart while spending more time)")
+    while True:
+        a=input()
+        try:
+            a=int(a)
+        except ValueError:
+            print("not num!")
+            continue
+        if a==0:
+            return 6
+        elif a==1:
+            return 7
+        else:
+            print("plz enter 0 or 1.")
+            continue
 #設定棋盤大小
 def setSize():
     print("plz enter the size of board.(n in size(nxn))(allowed size=5 to 20)")
@@ -44,30 +70,49 @@ def setSize():
         return a
 #清空畫面(感謝徐晧倫)
 def clear():
-    for i in range(100):
-        print()
+    print("\n"*100)
 #玩家下棋
 def player():
-    print("plz enter ur pos.")
+    
+    def getPlayerInput(x,y):#讓玩家調整要下棋的位置並等待按下enter
+        while 1:
+            print("plz choose ur pos.(Press the arrow keys to choose the position u like. Then submit it by pressing enter.)\n\t\t(press P should the board need reprinting.)")
+            while 1:#等待玩家按下按鍵
+                if keyboard.is_pressed(77) and x+1<size: #if right arrow is pressed
+                    x+=1
+                    break
+                if keyboard.is_pressed(75) and x-1>=0: #if left arrow is pressed
+                    x-=1
+                    break
+                if keyboard.is_pressed(72) and y-1>=0: #if up arrow is pressed
+                    y-=1
+                    break
+                if keyboard.is_pressed(80) and y+1<size: #if down arrow is pressed
+                    y+=1
+                    break
+                if keyboard.is_pressed(28): #if enter is pressed
+                    time.sleep(0.1)
+                    return x,y
+                if keyboard.is_pressed(25): #if p is pressed
+                    break
+            clear()
+            printBoard(board,boardWidth,y,x)
+            time.sleep(0.1)#延遲以避免按一次就執行多次
+
+    x=int(size/2)
+    y=int(size/2)
+    clear()
+    printBoard(board,boardWidth,y,x)#標記棋盤中心點作為預設下棋位置
+    #print("plz choose ur pos.")
+    
+    
     while True:
-        a=input()
-        if a.find(" ")==-1 or len(a) > 5:
-            print("wrong!!")
-            continue
-        try:
-            x,y = [int(i)-1 for i in a.split()]
-        except ValueError:
-            print("not num!")
-            continue
-        #x,y=====0~size-1
-        if x<0 or y<0 or x>size-1 or y>size-1:
-            print("UR WEIRD NUM NOT ALLOWED!!!")
-            continue
-        if not checkNoPiece(y,x):
-            print("There is already a piece.")
+        x,y=getPlayerInput(x,y)#等待玩家案enter輸入
+        if not checkNoPiece(y,x):#若下在已經有棋子的地方
+            print(colored.fg("white")+colored.bg("red_1")+"There is already a piece."+reset)
             continue
         break
-    board[y][x]="O"
+    board[y][x]="O"#下棋
 #檢查是否下在沒棋子之處
 def checkNoPiece(y,x):
     return board[y][x]=="."
@@ -151,12 +196,12 @@ def check(x,y,positions,who,depth,checkDepth,newBoard,onlyCheck,beta,checkAplhaB
         end=True
     #遞迴
     if who=="playerAI":
-        if end or checkBoardFull(aWholeNewBoard) or depth+1>=checkDepth:
+        if end or checkBoardFull(aWholeNewBoard) or depth+1>=checkDepth:#結束搜尋，傳回分數
             return pos
         else:
             return AllCheck("AI",depth+1,aWholeNewBoard,checkDepth,onlyCheck,beta,checkAplhaBeta)
     elif who=="AI":
-        if end or checkBoardFull(aWholeNewBoard) or depth+1>=checkDepth:
+        if end or checkBoardFull(aWholeNewBoard) or depth+1>=checkDepth:#結束搜尋，傳回分數
             return pos
         else:
             return AllCheck("playerAI",depth+1,aWholeNewBoard,checkDepth,onlyCheck,beta,checkAplhaBeta)
@@ -166,10 +211,7 @@ def vertical(b,pos,who,depth,onlyCheck):
     for x in range(size):
         line = [b[y][x] for y in range(size)]
         piecePos=[(y,x) for y in range(size)]
-        try:
-            line = "".join(line)
-        except:
-            print("sdszdsd")
+        line = "".join(line)
 
         pos,end=analyze(line,b,piecePos,pos,who,depth,onlyCheck)
     return pos,end
@@ -178,10 +220,7 @@ def horizontal(b,pos,who,depth,onlyCheck):
     for y in range(size):
         line = [b[y][x] for x in range(size)]
         piecePos=[(y,x) for x in range(size)]
-        try:
-            line = "".join(line)
-        except:
-            print("sdszdsd")
+        line = "".join(line)
 
         pos,end=analyze(line,b,piecePos,pos,who,depth,onlyCheck)
     return pos,end
@@ -190,10 +229,7 @@ def slideUP(b,pos,who,depth,onlyCheck):
     for k in range(0+4,(size*2-1)-4):
         line = [b[y][x] for x in range(size) for y in range(size) if x+y==k]
         piecePos=[(y,x) for x in range(size) for y in range(size) if x+y==k]
-        try:
-            line = "".join(line)
-        except:
-            print("sdszdsd")
+        line = "".join(line)
      
         pos,end=analyze(line,b,piecePos,pos,who,depth,onlyCheck)
     return pos,end
@@ -202,10 +238,7 @@ def slideDOWN(b,pos,who,depth,onlyCheck):
     for k in range((-(size-1))+4,(size)-4):
         line = [b[y][x] for x in range(size) for y in range(size) if x-y==k]
         piecePos=[(y,x) for x in range(size) for y in range(size) if x-y==k]
-        try:
-            line = "".join(line)
-        except:
-            print("sdszdsd")
+        line = "".join(line)
 
         pos,end=analyze(line,b,piecePos,pos,who,depth,onlyCheck)
     return pos,end
@@ -535,14 +568,19 @@ def gameover(text):
 
 
 #初始化
+k=7#default
+k=setDifficulty()
 size=setSize()
 CheckDepth=1
-
 board=[["." for i in range(size)] for i in range(size)]
-boardWidth=3
+boardWidth=1
+
+#定顏色
 fcolor=colored.fg("black")
 bcolor=colored.bg("white")
 reset=colored.attr("reset")
+markedcolor=colored.bg("orange_1")
+
 boardSpaceAmount=size**2
 print(f"boardSpaceAmount:{boardSpaceAmount}")
 printBoard(board,boardWidth)
@@ -551,13 +589,16 @@ while 1:
     #玩家下棋
     player()
     boardSpaceAmount-=1
+    clear()
     printBoard(board,boardWidth)
-    positions=DeepCheck(1,True)
+    positions=DeepCheck(1,True)#檢查是否有人贏了
     
 
     
     #訂定AI搜尋深度
-    CheckDepth=int(-0.05 * boardSpaceAmount +7)#or+6
+    CheckDepth=int(-0.05 * boardSpaceAmount +k)#k==7or6，由設定的難度所決定
+    if CheckDepth<1:
+    	CheckDepth=1
     print(f"CheckDepth : {CheckDepth}")
     #AI下棋
     print("loading...")
@@ -566,4 +607,4 @@ while 1:
     board=ai(positions,board)
     boardSpaceAmount-=1
     printBoard(board,boardWidth)
-    positions=DeepCheck(1,True)
+    positions=DeepCheck(1,True)#檢查是否有人贏了
